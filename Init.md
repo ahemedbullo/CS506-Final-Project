@@ -69,7 +69,7 @@ python src/data_loader.py
 Now you can run scripts for analysis:
 - **Data Cleaning:**
   ```bash
-  python src/feature_engineering.py
+  python src/data_processor.py
   ```
 - **Visualizations:**
   ```bash
