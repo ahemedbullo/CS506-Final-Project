@@ -7,29 +7,43 @@ def clean_stock_data(file_path, save_path="data/processed/"):
         os.makedirs(save_path)
 
     try:
-        # Skip the first two rows (Ticker and Date rows) and use the third row as headers
-        df = pd.read_csv(file_path, skiprows=[1])
+        # Read the CSV file, skipping the ticker row and empty date row
+        df = pd.read_csv(file_path, skiprows=[1, 2])
         
         print(f"\nProcessing file: {file_path}")
+        print("Original data shape:", df.shape)
         print("Columns in CSV:", df.columns.tolist())
         
         # Convert string values to numeric, coercing errors to NaN
-        numeric_columns = ['Close', 'High', 'Low', 'Open']
+        numeric_columns = ['Close', 'High', 'Low', 'Open', 'Volume']
         for col in numeric_columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
         
         # Set the index to Date
-        df.set_index('Price', inplace=True)
-        df.index.name = 'Date'
+        if 'Date' in df.columns:
+            df.set_index('Date', inplace=True)
+        elif 'Datetime' in df.columns:
+            df.set_index('Datetime', inplace=True)
         
-        print("\nFirst few rows after processing:")
-        print(df.head())
-
         # Clean and process data
+        # Remove rows where all numeric columns are NaN
+        df.dropna(subset=numeric_columns, how='all', inplace=True)
+        
+        # Remove duplicate dates
+        df = df[~df.index.duplicated(keep='first')]
+        
+        # Calculate additional features
+        df["Daily Return"] = df["Close"].pct_change()
+        df["Price Range"] = df["High"] - df["Low"]
+        df["Volume Change"] = df["Volume"].pct_change()
+        
+        # Remove any remaining NaN values
         df.dropna(inplace=True)
         
-        # Calculate daily returns using Close price
-        df["Daily Return"] = df["Close"].pct_change()
+        print("Processed data shape:", df.shape)
+        print("\nFirst few rows after processing:")
+        print(df.head())
 
         # Save processed data
         cleaned_file_path = os.path.join(save_path, os.path.basename(file_path))
