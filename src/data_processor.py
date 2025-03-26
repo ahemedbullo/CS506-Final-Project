@@ -12,7 +12,7 @@ def clean_stock_data(file_path, save_path="data/processed/"):
         
         print(f"\nProcessing file: {file_path}")
         print("Original data shape:", df.shape)
-        print("Columns in CSV:", df.columns.tolist())
+        print("Original columns:", df.columns.tolist())
         
         # Convert string values to numeric, coercing errors to NaN
         numeric_columns = ['Close', 'High', 'Low', 'Open', 'Volume']
@@ -20,15 +20,17 @@ def clean_stock_data(file_path, save_path="data/processed/"):
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         
+        # Check for NaN values
+        print("NaN values in each column:")
+        print(df.isna().sum())
+        
+        # Remove rows where any of the specified numeric columns are NaN
+        df.dropna(subset=numeric_columns, inplace=True)
+        
         # Set the index to Date
         if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'])
             df.set_index('Date', inplace=True)
-        elif 'Datetime' in df.columns:
-            df.set_index('Datetime', inplace=True)
-        
-        # Clean and process data
-        # Remove rows where all numeric columns are NaN
-        df.dropna(subset=numeric_columns, how='all', inplace=True)
         
         # Remove duplicate dates
         df = df[~df.index.duplicated(keep='first')]
@@ -42,12 +44,13 @@ def clean_stock_data(file_path, save_path="data/processed/"):
         df.dropna(inplace=True)
         
         print("Processed data shape:", df.shape)
+        print("Final columns:", df.columns.tolist())
         print("\nFirst few rows after processing:")
         print(df.head())
 
-        # Save processed data
+        # Save processed data with index
         cleaned_file_path = os.path.join(save_path, os.path.basename(file_path))
-        df.to_csv(cleaned_file_path)
+        df.to_csv(cleaned_file_path, index=True, index_label='Date', date_format='%Y-%m-%d')
         print(f"\nSaved processed file to: {cleaned_file_path}")
         
         return df
