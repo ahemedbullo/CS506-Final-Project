@@ -2,7 +2,8 @@
 
 **Members: Abidul, Ahemed, Abdullahi**
 
-[embed](https://github.com/user-attachments/files/19543976/Green.Minimalist.Professional.Tech.Start-Up.Pitch.Deck.Presentation.pdf)
+## ** [Midterm Report](https://github.com/ahemedbullo/CS506-Final-Project/blob/main/Midterm%20Report.pdf)
+
 
 # **Stock Analysis and S&P 500 Trend Prediction**  
 
