@@ -2,6 +2,7 @@
 
 **Members: Abidul, Ahemed, Abdullahi**
 
+[Green Minimalist Professional Tech Start-Up Pitch Deck Presentation.pdf](https://github.com/user-attachments/files/19543976/Green.Minimalist.Professional.Tech.Start-Up.Pitch.Deck.Presentation.pdf)
 
 # **Stock Analysis and S&P 500 Trend Prediction**  
 
