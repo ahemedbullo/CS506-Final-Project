@@ -23,6 +23,7 @@ PROCESSED_DATA_DIR = os.path.join("data", "processed")
 CORRELATION_FILE = "correlation_results.csv" # Expect correlation results in root dir
 RESULTS_DIR = "results" # Save outputs here
 MODELS_DIR = "models" # Save trained models here
+VIS_DIR = os.path.join("data", "visualizations") # Define Viz directory here too
 MODEL_RESULTS_CSV = os.path.join(RESULTS_DIR, "model_performance_results.csv")
 MODEL_PERFORMANCE_SUMMARY = os.path.join(RESULTS_DIR, "model_performance_summary.txt")
 MODEL_SAVE_PATH_LR = os.path.join(MODELS_DIR, "linear_regression_model.joblib") # Paths for saved models
@@ -49,7 +50,8 @@ def load_processed_data(data_dir):
                 symbol = file.replace(".csv", "")
                 file_path = os.path.join(data_dir, file)
                 # Only load 'Daily Return', ensure index is datetime
-                df = pd.read_csv(file_path, index_col="Date", parse_dates=True, usecols=["Date", "Daily Return"])
+                # Add date_format to potentially suppress warnings if format is consistent
+                df = pd.read_csv(file_path, index_col="Date", parse_dates=True, usecols=["Date", "Daily Return"], date_format='%Y-%m-%d')
                 df.sort_index(inplace=True)
                 if not df.index.is_monotonic_increasing:
                      print(f"[!] Warning: Index for {symbol} is not monotonic increasing. Sorting again.")
@@ -57,37 +59,51 @@ def load_processed_data(data_dir):
                 if df['Daily Return'].isnull().any():
                      print(f"[!] Warning: NaNs found in 'Daily Return' for {symbol}. Will be handled during merge.")
                 data[symbol] = df['Daily Return']
+            except ValueError as ve:
+                 # Try without format if specific format fails for a file
+                 try:
+                      print(f"[*] Retrying loading {file} without explicit date_format...")
+                      df = pd.read_csv(file_path, index_col="Date", parse_dates=True, usecols=["Date", "Daily Return"])
+                      df.sort_index(inplace=True)
+                      if not df.index.is_monotonic_increasing:
+                          df.sort_index(inplace=True)
+                      if df['Daily Return'].isnull().any():
+                          print(f"[!] Warning: NaNs found in 'Daily Return' for {symbol} on retry.")
+                      data[symbol] = df['Daily Return']
+                 except Exception as e_retry:
+                      print(f"[!] Error loading processed file {file} even on retry: {e_retry}")
             except Exception as e:
                 print(f"[!] Error loading processed file {file}: {e}")
     print(f"[+] Loaded data for {len(data)} symbols.")
     return data
 
 def select_top_features(correlation_file, n_top, target_symbol):
-    """Selects top N features based on absolute correlation with the target."""
+    """Selects top N features based on absolute correlation with the target, excluding S&P500 aliases."""
     try:
         corr_df = pd.read_csv(correlation_file)
-        # Ensure target_symbol is in the 'Stock' column for exclusion later
-        if target_symbol not in corr_df['Stock'].values:
-             print(f"[!] Warning: Target symbol '{target_symbol}' not found in correlation file's 'Stock' column.")
-             # Attempt to find common variations like ^GSPC if SP500 is target
-             if target_symbol == 'SP500' and '^GSPC' in corr_df['Stock'].values:
-                  target_symbol_in_file = '^GSPC'
-                  print(f"[*] Using '{target_symbol_in_file}' found in correlation file.")
-             elif target_symbol == '^GSPC' and 'SP500' in corr_df['Stock'].values:
-                  target_symbol_in_file = 'SP500'
-                  print(f"[*] Using '{target_symbol_in_file}' found in correlation file.")
-             else:
-                  print(f"[!] Cannot determine target symbol in correlation file. Check {correlation_file}")
-                  return None
-        else:
-            target_symbol_in_file = target_symbol
+
+        # --- Corrected Exclusion Logic ---
+        # Define potential names for the target index to exclude
+        target_aliases_to_exclude = ['SP500', '^GSPC']
+        # Remove the specific target_symbol passed to the function from this list
+        # if it happens to be one of the aliases, just to be safe, though filtering later is key.
+        # target_aliases_to_exclude = [t for t in target_aliases_to_exclude if t != target_symbol]
+
+        print(f"[*] Excluding potential target aliases: {target_aliases_to_exclude}")
+
+        # Check if 'Correlation with SP500' column exists
+        if 'Correlation with SP500' not in corr_df.columns:
+             print(f"[!] Error: Column 'Correlation with SP500' not found in {correlation_file}")
+             return None
 
         corr_df['Abs Correlation'] = corr_df['Correlation with SP500'].abs()
-        # Exclude the target symbol itself and sort
-        corr_df_filtered = corr_df[corr_df['Stock'] != target_symbol_in_file].sort_values(by='Abs Correlation', ascending=False)
+
+        # Exclude *all* potential target aliases from the feature list
+        corr_df_filtered = corr_df[~corr_df['Stock'].isin(target_aliases_to_exclude)].sort_values(by='Abs Correlation', ascending=False)
+        # --- End Corrected Exclusion Logic ---
 
         if corr_df_filtered.empty:
-            print("[!] Error: No features left after excluding target symbol in correlation file.")
+            print("[!] Error: No features left after excluding target symbol aliases in correlation file.")
             return None
 
         top_features = corr_df_filtered['Stock'].head(n_top).tolist()
@@ -153,7 +169,7 @@ def calculate_persistence_baseline(y_test):
     valid_indices = ~y_pred_baseline.isnull()
     if not valid_indices.any():
         print("[!] Warning: Could not calculate persistence baseline (no valid shifted values).")
-        return None, None, None, {}
+        return None, None, {} # Return empty dict for metrics
 
     y_test_valid = y_test[valid_indices]
     y_pred_baseline_valid = y_pred_baseline[valid_indices]
@@ -170,8 +186,9 @@ def calculate_persistence_baseline(y_test):
     return y_pred_baseline, y_test_valid.index, baseline_metrics
 
 
-def save_results_and_model(model, model_name, metrics, baseline_metrics, results_df, model_save_path):
-    """Saves model, performance metrics, and prediction results."""
+def save_results_and_model(model, model_name, metrics, baseline_metrics, model_save_path):
+    """Saves model and performance metrics summary."""
+    # Removed results_df saving from here, handled separately
     print(f"[*] Saving results for {model_name}...")
     os.makedirs(RESULTS_DIR, exist_ok=True)
     os.makedirs(MODELS_DIR, exist_ok=True)
@@ -183,11 +200,7 @@ def save_results_and_model(model, model_name, metrics, baseline_metrics, results
     except Exception as e:
         print(f"[!] Error saving {model_name} model: {e}")
 
-    # 2. Save detailed predictions CSV (potentially append if exists?) - For simplicity, overwrite now
-    # We save results only once after all models are evaluated
-    # This function focuses on saving the model object and performance summary
-
-    # 3. Save summary performance metrics to a text file (append mode)
+    # 2. Save summary performance metrics to a text file (append mode)
     try:
         mode = 'a' if os.path.exists(MODEL_PERFORMANCE_SUMMARY) else 'w'
         with open(MODEL_PERFORMANCE_SUMMARY, mode) as f:
@@ -196,14 +209,15 @@ def save_results_and_model(model, model_name, metrics, baseline_metrics, results
                   f.write("=========================\n")
              f.write(f"\n--- {model_name} ---\n")
              for key, value in metrics.items():
-                 f.write(f"  - {key}: {value:.4f}\n")
+                 # Ensure value is float before formatting
+                 f.write(f"  - {key}: {float(value):.4f}\n")
 
              # Write baseline metrics only once, perhaps after the first model
              if baseline_metrics is not None and model_name == "Linear Regression": # Example: write baseline with LR
                  f.write("\n--- Persistence Baseline ---\n")
-                 if baseline_metrics:
+                 if baseline_metrics: # Check if baseline_metrics dict is not empty
                      for key, value in baseline_metrics.items():
-                         f.write(f"  - {key}: {value:.4f}\n")
+                         f.write(f"  - {key}: {float(value):.4f}\n")
                  else:
                      f.write("  - Baseline metrics not available.\n")
 
@@ -214,6 +228,8 @@ def save_results_and_model(model, model_name, metrics, baseline_metrics, results
 def save_detailed_results(results_df):
      """Saves the combined results dataframe to CSV."""
      try:
+        # Ensure results directory exists before saving CSV
+        os.makedirs(os.path.dirname(MODEL_RESULTS_CSV), exist_ok=True)
         results_df.to_csv(MODEL_RESULTS_CSV, index=False)
         print(f"[+] Saved detailed prediction results to {MODEL_RESULTS_CSV}")
      except Exception as e:
@@ -225,9 +241,10 @@ def save_detailed_results(results_df):
 if __name__ == "__main__":
     print("[*] Starting S&P 500 Forecasting Model Training...")
 
-    # Ensure output directories exist
+    # Ensure output directories exist at the start
     os.makedirs(RESULTS_DIR, exist_ok=True)
     os.makedirs(MODELS_DIR, exist_ok=True)
+    os.makedirs(VIS_DIR, exist_ok=True) # Ensure viz dir exists too
     # Clear summary file at the start of a run
     if os.path.exists(MODEL_PERFORMANCE_SUMMARY):
         os.remove(MODEL_PERFORMANCE_SUMMARY)
@@ -352,20 +369,24 @@ if __name__ == "__main__":
             model=model,
             model_name=model_name,
             metrics=metrics,
-            baseline_metrics=baseline_metrics if model_name == "Linear Regression" else None, # Only save baseline metrics once
-            results_df=results_df, # Pass results_df (although not used in save func currently)
+            baseline_metrics=baseline_metrics if model_name == "Linear Regression" else None,
             model_save_path=model_save_paths[model_name]
             )
 
         # 5e. Generate Predicted vs Actual Plot for this model
         print(f"[*] Generating Predicted vs Actual plot for {model_name}...")
         if callable(plot_predicted_vs_actual):
-            plot_filename = os.path.join(VIS_DIR, f"predicted_vs_actual_{model_name.lower().replace(' ', '_')}.png")
+            # --- THIS IS THE FIX ---
+            # Convert y_pred numpy array to Series using y_test's index
+            y_pred_series = pd.Series(y_pred, index=y_test.index, name="Predicted")
+            # --- END FIX ---
+
+            base_plot_filename = f"predicted_vs_actual_{model_name.lower().replace(' ', '_')}.png"
             plot_predicted_vs_actual(
-                y_true=y_test,
-                y_pred=y_pred,
+                y_true=y_test,        # Pass original y_test Series
+                y_pred=y_pred_series, # Pass the NEW y_pred Series WITH INDEX
                 title=f"Predicted vs Actual S&P 500 Returns ({model_name} - Lag {LAG_DAYS}d)",
-                filename=plot_filename # Pass the full path
+                filename=base_plot_filename
             )
         else:
             print("[!] `plot_predicted_vs_actual` function not available for plotting.")

@@ -1,0 +1,25 @@
+Model Performance Summary:
+=========================
+
+--- Linear Regression ---
+  - CV R2 Mean (Train): -0.1754
+  - CV R2 Std (Train): 0.0426
+  - CV MAE Mean (Train): 0.0097
+  - CV RMSE Mean (Train): 0.0121
+  - Test R2: -0.0795
+  - Test MAE: 0.0060
+  - Test RMSE: 0.0075
+
+--- Persistence Baseline ---
+  - Baseline R2: -0.8827
+  - Baseline MAE: 0.0079
+  - Baseline RMSE: 0.0099
+
+--- Random Forest ---
+  - CV R2 Mean (Train): -0.2891
+  - CV R2 Std (Train): 0.3239
+  - CV MAE Mean (Train): 0.0096
+  - CV RMSE Mean (Train): 0.0126
+  - Test R2: -0.0132
+  - Test MAE: 0.0058
+  - Test RMSE: 0.0073

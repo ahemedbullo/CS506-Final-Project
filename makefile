@@ -1,4 +1,4 @@
-# Makefile for Stock Analysis Project (Cross-Platform Focus)
+# Makefile for Stock Analysis Project (Cross-Platform Focus - CORRECTED MKDIR/CLEAN)
 
 # --- Variables ---
 # Use 'python' - assumes it's correct command after venv activation
@@ -13,7 +13,8 @@ VIS_DIR = $(DATA_DIR)/visualizations
 RESULTS_DIR = results
 MODELS_DIR = models
 CORRELATION_RESULTS = correlation_results.csv
-MODEL_RESULTS_CSV = model_results.csv
+# Adjust if your model.py saves results to the results directory
+MODEL_RESULTS_CSV = $(RESULTS_DIR)/model_performance_results.csv
 REQUIREMENTS = requirements.txt
 TEST_DIR = tests
 VENV_DIR = venv
@@ -21,12 +22,14 @@ VENV_DIR = venv
 # Determine Python executable within venv based on OS guess
 # This is imperfect but covers common cases for the install target
 ifeq ($(OS),Windows_NT)
-    VENV_PYTHON = $(VENV_DIR)/Scripts/python.exe
-    MKDIR = if not exist "$(subst /,\, $@)" mkdir "$(subst /,\, $@)"
+	VENV_PYTHON = $(VENV_DIR)/Scripts/python.exe
+	# --- THIS IS THE FIX --- Use POSIX standard mkdir -p
+	MKDIR = mkdir -p $@
+	# --- THIS IS THE FIX --- Use Python for cleaning on Windows too
 	CLEAN_CMD = $(PYTHON) -c "import shutil; shutil.rmtree('{}', ignore_errors=True)"
 else
-    VENV_PYTHON = $(VENV_DIR)/bin/python
-    MKDIR = mkdir -p $@
+	VENV_PYTHON = $(VENV_DIR)/bin/python
+	MKDIR = mkdir -p $@
 	CLEAN_CMD = rm -rf "{}"
 endif
 
@@ -87,11 +90,13 @@ correlate: check_venv process
 	@$(PYTHON) $(SRC_DIR)/correlation_analysis.py
 	@echo "Correlation analysis complete."
 
+# Ensure viz directory exists before running
 visualize: check_venv process $(VIS_DIR)
 	@echo "--- Generating Visualizations ---"
 	@$(PYTHON) $(SRC_DIR)/visualization.py
 	@echo "Visualization generation complete."
 
+# Ensure results/models directories exist before running train
 train: check_venv correlate $(MODELS_DIR) $(RESULTS_DIR)
 	@echo "--- Training Model ---"
 	@$(PYTHON) $(SRC_DIR)/model.py
@@ -105,30 +110,38 @@ test: check_venv install # Ensure packages are installed, then check activation
 
 
 # --- Helper Targets for Directory Creation ---
+# These use the MKDIR variable defined above based on OS
 $(RAW_DATA_DIR):
-	$(MKDIR)
+	@echo "Ensuring directory exists: $@"
+	@$(MKDIR)
 
 $(PROCESSED_DATA_DIR):
-	$(MKDIR)
+	@echo "Ensuring directory exists: $@"
+	@$(MKDIR)
 
 $(VIS_DIR):
-	$(MKDIR)
+	@echo "Ensuring directory exists: $@"
+	@$(MKDIR)
 
 $(RESULTS_DIR):
-	$(MKDIR)
+	@echo "Ensuring directory exists: $@"
+	@$(MKDIR)
 
 $(MODELS_DIR):
-	$(MKDIR)
+	@echo "Ensuring directory exists: $@"
+	@$(MKDIR)
 
 
 # --- Full Workflow ---
 # Assumes manual activation before running 'make run'
-run: check_venv install data process correlate train visualize
+# Ensure all directories needed by subsequent steps are listed as dependencies
+run: check_venv install data process correlate $(RESULTS_DIR) $(MODELS_DIR) $(VIS_DIR) train visualize
 	@echo "--- Project Workflow Executed Successfully ---"
 	@echo "[Reminder] Ensure venv was activated before running 'make run'."
 
 # --- Cleaning ---
 # Uses Python for removing directories/files where possible for portability
+# Updated path for MODEL_RESULTS_CSV based on revised model.py saving location
 clean:
 	@echo "Cleaning generated files..."
 	$(call CLEAN_CMD,$(RAW_DATA_DIR))

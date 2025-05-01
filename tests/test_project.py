@@ -1,5 +1,3 @@
-# tests/test_project.py
-
 import os
 import sys
 import pandas as pd
