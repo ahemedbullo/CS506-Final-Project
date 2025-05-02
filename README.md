@@ -2,6 +2,8 @@
 **Stock Analysis and S&P 500 Trend Prediction**  
 **Members**: Abidul, Ahemed, Abdullahi  
 
+https://www.youtube.com/watch?v=xUNRZSyDAns&ab_channel=AbdullahiNur
+
 ---
 
 ## Project Description
