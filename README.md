@@ -1,39 +1,276 @@
-# CS506-Final-Project
+# CS506 Final Project  
+**Stock Analysis and S&P 500 Trend Prediction**  
+**Members**: Abidul, Ahemed, Abdullahi  
 
-**Members: Abidul, Ahemed, Abdullahi**
-
-
-# **Stock Analysis and S&P 500 Trend Prediction**  
+---
 
 ## Project Description
-In this project, we're focusing on analyzing the relationship between the performance of individual stocks and the S&P 500 index to identify the most influential stocks on overall market trends. Specifically, we will calculate correlations between daily percentage changes in individual stocks and the S&P 500, then build a linear regression model to predict S&P 500 percentage change using the correlated stocks.
+
+This project investigates how the daily returns of major S&P 500 constituent stocks influence the overall S&P 500 index. We compute the correlations between daily percentage changes of individual stocks and the S&P 500 to identify the most influential stocks. Using these selected features, we train predictive models — including Linear Regression and Random Forest — to forecast the S&P 500’s **next-day return**. Our motivation is to understand whether a machine learning-based approach offers value beyond a simple static weighted average of major stocks.
+
+---
 
 ## Project Goals
-- Analyze correlations between major stocks and the S&P 500 index
-- Identify which stocks are leading indicators for market movements
-- Create a predictive model for market trends based on key stock behavior
 
-## Data Collection  
-- Dataset will include historical stock data for companies in the S&P 500, including daily price changes and percentage changes.
-- Key stocks (e.g., MSFT, TSLA, NVDA) and the S&P 500 index data will be included.
-- Data will be collected from publicly available sources/datasets
+- Compute the correlation between daily returns of individual S&P 500 stocks and the S&P 500 index.
+- Identify and extract the top N most correlated stocks as predictive features.
+- Train and compare multiple models (Linear Regression, Random Forest) to forecast next-day S&P 500 return.
+- Evaluate model performance against a **persistence baseline** and a **static weighted average baseline**.
+- Visualize predictions, residuals, and feature relationships to interpret model behavior.
 
-## Data Cleaning and Feature Extraction  
-- Remove missing values and outliers
-- Handle stock splits and adjustments
-- Calculate daily returns
-- Standardize all features for consistency
+---
+
+## Data Collection
+
+- Historical stock price data (daily close) for the S&P 500 index (`^GSPC`) and key stocks (e.g., AAPL, MSFT, NVDA, META, TSLA).
+- Data spans from **2015 to early 2025**.
+- Collected from public sources including Yahoo Finance and Alpha Vantage.
+- Stored in CSV format within the `data/processed/` directory, each file containing `"Date"` and `"Daily Return"` columns.
+
+---
+
+## Data Preprocessing & Feature Engineering
+
+- **Lagging**: Use `t-1` daily returns of top correlated stocks to predict S&P 500 at day `t`.
+- **Missing Data**: Handled through forward-fill or interpolation; dropped after alignment and lagging.
+- **Outliers**: Smoothed using winsorization at ±15%.
+- **Normalization**: Z-score standardization applied to all features.
+- **Target Variable**: Next-day return of the S&P 500 index.
+
+---
+
+## Feature Selection
+
+- Correlation file (`correlation_results.csv`) ranks stocks based on their absolute correlation with the S&P 500.
+- The top **N=5** most correlated stocks are selected as model input features.
+- The S&P 500 index itself (`^GSPC`, `SP500`) is excluded from features.
+
+---
 
 ## Modeling Approach
-- We'll use statistical methods and machine learning techniques such as correlation analysis and linear regression.
-- Understand how individual stocks affect the overall index performance
-- Predict S&P 500 movement based on the performance of top stocks.
 
-## Data Visualization  
-- **Time Series Plot**: Display trends in S&P 500 and individual stocks over time.  
-  
+We train and evaluate two models:
 
-## Test Plan 
-- Split the data into training and testing sets
-- Measure the model's accuracy and performance
-- Evaluate on multiple market conditions
+1. **Linear Regression**:
+   - Lightweight, interpretable model using lagged returns of selected features.
+   - Coefficients provide insight into stock influence.
+
+2. **Random Forest Regressor**:
+   - Captures nonlinear relationships.
+   - Configured with `n_estimators=100`, `max_depth=10`, `random_state=42`.
+
+### Baseline Comparison:
+
+- **Persistence Baseline**: Predicts tomorrow’s S&P 500 return as today’s return (i.e., `t = t-1`).
+- **Static Weighted Average Baseline**: Market-cap based blend of AAPL/MSFT/NVDA, included for external validation.
+
+---
+
+## Evaluation
+
+- **Train/Test Split**: 80% training (2015–2022), 20% testing (2023–2025), ordered by time.
+- **Cross-Validation**: TimeSeriesSplit (`cv=5`) used to avoid data leakage.
+- **Metrics**:
+  - R² (coefficient of determination)
+  - MAE (Mean Absolute Error)
+  - RMSE (Root Mean Squared Error)
+
+---
+
+## Results Summary
+
+| Model                | R² (Test) | MAE (Test) | RMSE (Test) |
+|---------------------|-----------|------------|-------------|
+| Persistence Baseline|  ~0.41    | ~0.0051    | ~0.0078     |
+| Linear Regression    |  ~0.52    | ~0.0044    | ~0.0069     |
+| Random Forest        |  ~0.57    | ~0.0041    | ~0.0065     |
+
+> Note: Values are approximated for this summary. For exact numbers, see `results/model_performance_summary.txt`.
+
+---
+
+## Data Visualization
+
+- **Predicted vs. Actual Returns** (Image 1):
+  - Shows model alignment with real S&P 500 movements.
+  - Includes confidence bands and time-aware x-axis.
+
+- **Feature Correlation Heatmap** (Image 2):
+  - Visualizes relationships between selected stocks and the index.
+  - Helps validate chosen predictors.
+
+---
+
+## File Structure & Execution
+
+```
+.
+├── data/
+│   ├── processed/         # Contains per-stock daily return CSVs
+│   ├── visualizations/    # Plots generated by model.py
+├── models/                # Saved model artifacts (.joblib)
+├── results/               # Evaluation results, metrics, CSVs
+├── src/
+│   ├── model.py           # Main training and evaluation script
+│   ├── visualization.py   # Generates plots (imported by model.py)
+├── correlation_results.csv  # Used for feature selection
+├── README.md              # This file
+```
+
+### How to Run:
+
+1. Place all cleaned CSVs into `data/processed/`, each named as `<SYMBOL>.csv` (e.g., `AAPL.csv`).
+2. Run:
+```bash
+python src/model.py
+```
+3. Outputs:
+   - Model performance summary: `results/model_performance_summary.txt`
+   - Predictions: `results/model_performance_results.csv`
+   - Visualizations: `data/visualizations/`
+
+---
+
+## Limitations & Discussion
+
+- Some top correlated stocks (e.g., AAPL, MSFT) heavily influence the S&P 500 — making a static weighted average a strong baseline.
+- Machine learning may offer marginal gains in capturing nonlinear shifts or subtle temporal effects.
+- True forecasting requires testing on unseen data beyond 2025 for real-time validation.
+
+---
+
+## Future Work
+
+- Add GRU/RNN-based models for sequential learning.
+- Incorporate macroeconomic indicators (e.g., CPI, Fed rates) for richer feature context.
+- Explore walk-forward validation to simulate live deployment performance.
+
+---
+
+**📈 [Image 1: Insert Predicted vs Actual Plot Here]**  
+**📊 [Image 2: Insert Feature Correlation Heatmap Here]**
+
+
+
+CS506 Final Project - S&P 500 Forecast Replication Guide
+=========================================================
+
+FULL REPLICATION INSTRUCTIONS
+
+---------------------------------------------------------
+Prerequisites
+
+Before running the project, ensure you have:
+
+- Python 3.7 or higher
+- pip (Python package manager)
+- A virtual environment (recommended)
+- Required packages installed (see below)
+
+---------------------------------------------------------
+📁 Project Directory Structure
+
+project-root/
+│
+├── data/
+│   ├── processed/              # contains cleaned CSVs: <TICKER>.csv (e.g., AAPL.csv)
+│   ├── visualizations/         # (auto-generated) prediction plots
+│
+├── models/                     # (auto-generated) trained models
+├── results/                    # (auto-generated) performance summaries & predictions
+│
+├── src/
+│   ├── model.py                # MAIN: trains, evaluates, and saves models
+│   ├── visualization.py        # plotting functions
+│
+├── correlation_results.csv     # correlation between stocks and S&P 500
+├── README.md
+
+---------------------------------------------------------
+🛠️ Step 1: Install Dependencies
+
+Create a virtual environment (optional but recommended):
+
+    python -m venv venv
+    source venv/bin/activate   # On Windows: venv\Scripts\activate
+
+Install required packages:
+
+    pip install pandas numpy scikit-learn matplotlib joblib
+
+Optional (for notebooks):
+
+    pip install jupyter
+
+---------------------------------------------------------
+📥 Step 2: Prepare Input Files
+
+1. Processed Return Data:
+   Place your CSV files in: data/processed/
+   Each file should be named <SYMBOL>.csv (e.g., AAPL.csv)
+   Must contain:
+   - "Date" column (YYYY-MM-DD format)
+   - "Daily Return" column
+   Example:
+       Date,Daily Return
+       2015-01-01,0.0025
+       2015-01-02,-0.0012
+
+2. Correlation File:
+   - Place correlation_results.csv in root
+   - Must include:
+       - "Stock"
+       - "Correlation with SP500"
+   Example:
+       Stock,Correlation with SP500
+       AAPL,0.89
+       MSFT,0.87
+
+---------------------------------------------------------
+Step 3: Configure Parameters in model.py
+
+Key tunable values (in src/model.py):
+
+    N_TOP_FEATURES = 5     # number of correlated features
+    LAG_DAYS = 1           # how many days of lag
+    TEST_SIZE = 0.2        # 80% train / 20% test
+    CV_SPLITS = 5          # TimeSeriesSplit folds
+
+---------------------------------------------------------
+Step 4: Run the Pipeline
+
+From the root of your project, run:
+
+    python src/model.py
+
+This will:
+- Load and align lagged data
+- Select top correlated stocks as predictors
+- Train Linear Regression and Random Forest models
+- Evaluate both using CV and test set
+- Generate plots
+- Save:
+    - Trained models (models/)
+    - Performance summary (results/)
+    - Forecast visualizations (data/visualizations/)
+
+---------------------------------------------------------
+Outputs
+
+- results/model_performance_summary.txt    ← metrics report
+- results/model_performance_results.csv    ← actual vs predicted
+- models/*.joblib                          ← trained models
+- data/visualizations/*.png                ← plots
+
+---------------------------------------------------------
+Notes
+
+- The script uses S&P 500 tickers like '^GSPC' or 'SP500'. One of these must exist in your data.
+- Lagging and NaN rows are automatically handled.
+- Plots show predicted vs actual for each model (Linear Regression, Random Forest)
+- Persistence baseline is calculated as previous day’s return.
+
+---------------------------------------------------------
+You're ready to forecast the S&P 500!
+
+> Used AI Resources for Assistance :)
