@@ -147,8 +147,14 @@ python src/model.py
 
 ---
 
-**📈 [Image 1: Insert Predicted vs Actual Plot Here]**  
-**📊 [Image 2: Insert Feature Correlation Heatmap Here]**
+**📈 [Image 1: Predicted vs Actual Plot Here]**  
+![pva](https://github.com/user-attachments/assets/2ae66f29-9ba8-4eb1-ace3-5dd70f4b8cba)
+
+
+**📊 [Image 2: Feature Correlation Heatmap Here]**
+
+![da](https://github.com/user-attachments/assets/dbb0f45e-5f78-4946-b264-c367c9b5b027)
+
 
 
 
