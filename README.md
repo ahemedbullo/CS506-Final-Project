@@ -176,25 +176,6 @@ Before running the project, ensure you have:
 - Required packages installed (see below)
 
 ---------------------------------------------------------
-📁 Project Directory Structure
-
-project-root/
-│
-├── data/
-│   ├── processed/              # contains cleaned CSVs: <TICKER>.csv (e.g., AAPL.csv)
-│   ├── visualizations/         # (auto-generated) prediction plots
-│
-├── models/                     # (auto-generated) trained models
-├── results/                    # (auto-generated) performance summaries & predictions
-│
-├── src/
-│   ├── model.py                # MAIN: trains, evaluates, and saves models
-│   ├── visualization.py        # plotting functions
-│
-├── correlation_results.csv     # correlation between stocks and S&P 500
-├── README.md
-
----------------------------------------------------------
 🛠️ Step 1: Install Dependencies
 
 Create a virtual environment (optional but recommended):
